@@ -1,0 +1,78 @@
+﻿<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Вікторина</title>
+</head>
+<body>
+
+    <!-- Шапка з назвою -->
+    <header>
+        <h1>Вікторина</h1>
+    </header>
+
+    <main>
+        <!-- Блок прогресу проходження -->
+        <section id="progress-section">
+            <h2>Прогрес</h2>
+            <progress id="quiz-progress" value="1" max="10"></progress>
+            <p>Питання <span id="current-question-num">1</span> з <span id="total-questions-num">10</span></p>
+        </section>
+
+        <!-- Блок поточного питання й варіантів відповіді -->
+        <section id="question-section">
+            <h2 id="question-text">Текст поточного питання з'явиться тут?</h2>
+
+            <form id="quiz-form">
+                <fieldset>
+                    <legend>Оберіть один варіант відповіді:</legend>
+
+                    <div>
+                        <input type="radio" id="option1" name="answer" value="1" />
+                        <label for="option1">Варіант відповіді 1</label>
+                    </div>
+
+                    <div>
+                        <input type="radio" id="option2" name="answer" value="2" />
+                        <label for="option2">Варіант відповіді 2</label>
+                    </div>
+
+                    <div>
+                        <input type="radio" id="option3" name="answer" value="3" />
+                        <label for="option3">Варіант відповіді 3</label>
+                    </div>
+
+                    <div>
+                        <input type="radio" id="option4" name="answer" value="4" />
+                        <label for="option4">Варіант відповіді 4</label>
+                    </div>
+                </fieldset>
+
+                <button type="submit">Відповісти</button>
+            </form>
+        </section>
+
+        <!-- Блок результатів / історії спроб -->
+        <section id="results-section">
+            <h2>Результати та історія спроб</h2>
+
+            <div id="current-score">
+                <p>Ваш останній результат: <strong id="score-display">0 / 10</strong></p>
+            </div>
+
+            <h3>Попередні спроби:</h3>
+            <ul id="history-list">
+                <li>Спроба #1 — 8/10 (10.09.2026)</li>
+                <li>Спроба #2 — 10/10 (10.09.2026)</li>
+            </ul>
+        </section>
+    </main>
+
+    <!-- Підвал -->
+    <footer>
+        <p>&copy; 2026 Проєкт quiz-app. Усі права захищено.</p>
+    </footer>
+
+</body>
+</html>
