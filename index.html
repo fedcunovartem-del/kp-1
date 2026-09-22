@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Вікторина</title>
+    <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
@@ -18,36 +19,35 @@
     </header>
 
     <main>
-
-        <section id="question-section">
+        <section id="question-section" class="question-card">
             <h2>Поточне питання</h2>
             <p id="question-text">Текст питання з'явиться тут</p>
 
             <form id="quiz-form">
                 <fieldset>
                     <legend>Варіанти відповіді:</legend>
-                    <div>
+                    <div class="option-item">
                         <input type="radio" id="option1" name="answer" value="1" />
                         <label for="option1">Варіант 1</label>
                     </div>
-                    <div>
+                    <div class="option-item">
                         <input type="radio" id="option2" name="answer" value="2" />
                         <label for="option2">Варіант 2</label>
                     </div>
                 </fieldset>
-                <button type="submit">Відповісти</button>
+                <button type="submit" class="submit-btn">Відповісти</button>
             </form>
         </section>
 
         <section id="history-section">
             <h2>Історія спроб</h2>
 
-            <article>
+            <article class="history-card">
                 <h3>Спроба від 10.09.2026</h3>
                 <p>Результат: 8/10</p>
             </article>
 
-            <article>
+            <article class="history-card">
                 <h3>Спроба від 11.09.2026</h3>
                 <p>Результат: 10/10</p>
             </article>
@@ -55,7 +55,7 @@
     </main>
 
     <footer>
-        <p>&copy; 2026 quiz-app. Kawabanga entartainment</p>
+        <p>&copy; 2026 quiz-app. Kawabanga entertainment</p>
     </footer>
 
 </body>
