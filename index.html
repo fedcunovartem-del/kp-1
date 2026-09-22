@@ -7,11 +7,56 @@
 </head>
 <body>
 
-    <!-- Шапка з назвою -->
-    <!-- Блок прогресу проходження -->
-    <!-- Блок поточного питання й варіантів відповіді -->
-    <!-- Блок результатів/історії спроб -->
-    <!-- Підвал -->
+    <header>
+        <h1>Вікторина</h1>
+        <nav>
+            <ul>
+                <li><a href="#question-section">Питання</a></li>
+                <li><a href="#history-section">Результати</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+
+        <section id="question-section">
+            <h2>Поточне питання</h2>
+            <p id="question-text">Текст питання з'явиться тут</p>
+
+            <form id="quiz-form">
+                <fieldset>
+                    <legend>Варіанти відповіді:</legend>
+                    <div>
+                        <input type="radio" id="option1" name="answer" value="1" />
+                        <label for="option1">Варіант 1</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="option2" name="answer" value="2" />
+                        <label for="option2">Варіант 2</label>
+                    </div>
+                </fieldset>
+                <button type="submit">Відповісти</button>
+            </form>
+        </section>
+
+        <section id="history-section">
+            <h2>Історія спроб</h2>
+
+            <article>
+                <h3>Спроба від 10.09.2026</h3>
+                <p>Результат: 8/10</p>
+            </article>
+
+            <article>
+                <h3>Спроба від 11.09.2026</h3>
+                <p>Результат: 10/10</p>
+            </article>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 quiz-app. Kawabanga entartainment</p>
+    </footer>
 
 </body>
 </html>
