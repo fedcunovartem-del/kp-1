@@ -26,13 +26,23 @@
             <form id="quiz-form">
                 <fieldset>
                     <legend>Варіанти відповіді:</legend>
-                    <div class="option-item">
-                        <input type="radio" id="option1" name="answer" value="1" />
-                        <label for="option1">Варіант 1</label>
-                    </div>
-                    <div class="option-item">
-                        <input type="radio" id="option2" name="answer" value="2" />
-                        <label for="option2">Варіант 2</label>
+                    <div class="options-container">
+                        <div class="option-item">
+                            <input type="radio" id="option1" name="answer" value="1" />
+                            <label for="option1">Варіант 1</label>
+                        </div>
+                        <div class="option-item">
+                            <input type="radio" id="option2" name="answer" value="2" />
+                            <label for="option2">Варіант 2</label>
+                        </div>
+                        <div class="option-item">
+                            <input type="radio" id="option3" name="answer" value="3" />
+                            <label for="option3">Варіант 3</label>
+                        </div>
+                        <div class="option-item">
+                            <input type="radio" id="option4" name="answer" value="4" />
+                            <label for="option4">Варіант 4</label>
+                        </div>
                     </div>
                 </fieldset>
                 <button type="submit" class="submit-btn">Відповісти</button>
@@ -42,15 +52,22 @@
         <section id="history-section">
             <h2>Історія спроб</h2>
 
-            <article class="history-card">
-                <h3>Спроба від 10.09.2026</h3>
-                <p>Результат: 8/10</p>
-            </article>
+            <div class="history-cards">
+                <article class="history-card">
+                    <h3>Спроба від 10.09.2026</h3>
+                    <p>Результат: 8/10</p>
+                </article>
 
-            <article class="history-card">
-                <h3>Спроба від 11.09.2026</h3>
-                <p>Результат: 10/10</p>
-            </article>
+                <article class="history-card">
+                    <h3>Спроба від 11.09.2026</h3>
+                    <p>Результат: 10/10</p>
+                </article>
+
+                <article class="history-card">
+                    <h3>Спроба від 12.09.2026</h3>
+                    <p>Результат: 9/10</p>
+                </article>
+            </div>
         </section>
     </main>
 
