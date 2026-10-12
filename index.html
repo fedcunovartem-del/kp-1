@@ -19,6 +19,16 @@
     </header>
 
     <main>
+        <!-- Блок прогресу з великим виразним номером -->
+        <section id="progress-section">
+            <h2>Прогрес</h2>
+            <div class="progress-container">
+                <span class="progress-label">Питання <span class="large-question-num" id="current-question-num">1</span> з <span id="total-questions-num">10</span></span>
+            </div>
+            <progress id="quiz-progress" value="1" max="10"></progress>
+        </section>
+
+        <!-- Картка поточного питання -->
         <section id="question-section" class="question-card">
             <h2>Поточне питання</h2>
             <p id="question-text">Текст питання з'явиться тут</p>
@@ -27,21 +37,34 @@
                 <fieldset>
                     <legend>Варіанти відповіді:</legend>
                     <div class="options-container">
-                        <div class="option-item">
+                        <!-- Варіант як велика кнопка з індикатором правильності -->
+                        <div class="option-item option-correct">
                             <input type="radio" id="option1" name="answer" value="1" />
-                            <label for="option1">Варіант 1</label>
+                            <label for="option1">
+                                <span class="option-text">Варіант 1</span>
+                                <span class="accessibility-indicator" aria-label="Правильно">✓ Правильно</span>
+                            </label>
                         </div>
-                        <div class="option-item">
+                        <div class="option-item option-incorrect">
                             <input type="radio" id="option2" name="answer" value="2" />
-                            <label for="option2">Варіант 2</label>
+                            <label for="option2">
+                                <span class="option-text">Варіант 2</span>
+                                <span class="accessibility-indicator" aria-label="Неправильно">✗ Неправильно</span>
+                            </label>
                         </div>
                         <div class="option-item">
                             <input type="radio" id="option3" name="answer" value="3" />
-                            <label for="option3">Варіант 3</label>
+                            <label for="option3">
+                                <span class="option-text">Варіант 3</span>
+                                <span class="accessibility-indicator" aria-label="Нейтрально"></span>
+                            </label>
                         </div>
                         <div class="option-item">
                             <input type="radio" id="option4" name="answer" value="4" />
-                            <label for="option4">Варіант 4</label>
+                            <label for="option4">
+                                <span class="option-text">Варіант 4</span>
+                                <span class="accessibility-indicator" aria-label="Нейтрально"></span>
+                            </label>
                         </div>
                     </div>
                 </fieldset>
@@ -49,6 +72,7 @@
             </form>
         </section>
 
+        <!-- Розділ історії спроб -->
         <section id="history-section">
             <h2>Історія спроб</h2>
 
@@ -72,7 +96,7 @@
     </main>
 
     <footer>
-        <p>&copy; 2026 quiz-app. Kawabanga entertainment</p>
+        <p>&copy; 2026 quiz-app. Навчальний проєкт.</p>
     </footer>
 
 </body>
