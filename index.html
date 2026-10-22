@@ -31,13 +31,29 @@
 
         <!-- Блок списку питань -->
         <section id="question-section" class="question-card">
-            <h2>Список питань квізу</h2>
+            <h2>Поточне питання</h2>
 
-            <p id="questions-count">Кількість питань: 0</p>
+            <div class="progress-container">
+                <span class="progress-label">Питання <span class="large-question-num" id="current-question-num">1</span> з <span id="total-questions-num">3</span></span>
+            </div>
+            <progress id="quiz-progress" value="1" max="3"></progress>
 
-            <ul id="questions-list">
-                <li class="static-item">Статичне питання для прикладу</li>
-            </ul>
+            <form id="quiz-form">
+                <fieldset>
+                    <legend id="question-text">Завантаження питання...</legend>
+
+                    <div class="options-container" id="options-container">
+                        <!-- Динамічно згенеровані radio-кнопки з'являтимуться тут -->
+                    </div>
+                </fieldset>
+
+                <div class="form-actions">
+                    <button type="submit" class="submit-btn" id="submit-btn">Відповісти</button>
+                    <button type="button" class="submit-btn" id="next-btn" style="display: none;">Наступне питання</button>
+                </div>
+            </form>
+
+            <p id="result-feedback" style="margin-top: 1rem; font-weight: bold;"></p>
         </section>
 
         <!-- Розділ історії спроб -->
