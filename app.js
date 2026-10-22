@@ -6,32 +6,29 @@ const quizData = [
     { question: "Яке значення display використовується для створення Grid-сітки?", answer: "grid" }
 ];
 
-// Обробляє масив питань, виводить їх у консоль та підраховує загальну кількість
-function printQuizInfo(questions) {
-    console.log(`Загальна кількість питань у квізі: ${questions.length}`);
+const listContainer = document.querySelector('#questions-list');
+
+const staticItem = listContainer.querySelector('.static-item');
+if (staticItem) {
+    staticItem.remove();
+}
+
+function renderQuestions(questions) {
     for (const item of questions) {
-        console.log(`Питання: ${item.question} | Відповідь: ${item.answer}`);
+        const li = document.createElement('li');
+
+        li.textContent = item.question;
+
+        li.setAttribute('data-answer', item.answer);
+        li.classList.add('answered');
+
+        listContainer.append(li);
     }
 }
 
-// Виклик функції обробки даних
-printQuizInfo(quizData);
+renderQuestions(quizData);
 
-// Порівнює жорстко задану відповідь користувача з правильною та виводить результат
-function checkUserAnswer(userAnswer, correctAnswer) {
-    if (userAnswer === correctAnswer) {
-        console.log("правильно");
-    } else {
-        console.log("неправильно");
-    }
+const questionsCountEl = document.querySelector('#questions-count');
+if (questionsCountEl) {
+    questionsCountEl.textContent = `Загальна кількість питань: ${quizData.length}`;
 }
-
-checkUserAnswer("padding", "padding"); // Виведе "правильно"
-checkUserAnswer("margin", "padding");  // Виведе "неправильно"
-
-// Приймає кількість правильних відповідей і загальну кількість, повертає заокруглений відсоток
-const calcScorePercent = (correctCount, total) => Math.round((correctCount / total) * 100);
-
-// Виклик стрілкової функції з реальними даними та вивід через console.log
-const scoreResult = calcScorePercent(8, 10);
-console.log(`Відсоток успішності спроби: ${scoreResult}%`);

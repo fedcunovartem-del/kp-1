@@ -20,7 +20,7 @@
     </header>
 
     <main>
-        <!-- Блок прогресу з великим виразним номером -->
+        <!-- Блок прогресу -->
         <section id="progress-section">
             <h2>Прогрес</h2>
             <div class="progress-container">
@@ -29,48 +29,15 @@
             <progress id="quiz-progress" value="1" max="10"></progress>
         </section>
 
-        <!-- Картка поточного питання -->
+        <!-- Блок списку питань -->
         <section id="question-section" class="question-card">
-            <h2>Поточне питання</h2>
-            <p id="question-text">Текст питання з'явиться тут</p>
+            <h2>Список питань квізу</h2>
 
-            <form id="quiz-form">
-                <fieldset>
-                    <legend>Варіанти відповіді:</legend>
-                    <div class="options-container">
-                        <!-- Варіант як велика кнопка з індикатором правильності -->
-                        <div class="option-item option-correct">
-                            <input type="radio" id="option1" name="answer" value="1" />
-                            <label for="option1">
-                                <span class="option-text">Варіант 1</span>
-                                <span class="accessibility-indicator" aria-label="Правильно">✓ Правильно</span>
-                            </label>
-                        </div>
-                        <div class="option-item option-incorrect">
-                            <input type="radio" id="option2" name="answer" value="2" />
-                            <label for="option2">
-                                <span class="option-text">Варіант 2</span>
-                                <span class="accessibility-indicator" aria-label="Неправильно">✗ Неправильно</span>
-                            </label>
-                        </div>
-                        <div class="option-item">
-                            <input type="radio" id="option3" name="answer" value="3" />
-                            <label for="option3">
-                                <span class="option-text">Варіант 3</span>
-                                <span class="accessibility-indicator" aria-label="Нейтрально"></span>
-                            </label>
-                        </div>
-                        <div class="option-item">
-                            <input type="radio" id="option4" name="answer" value="4" />
-                            <label for="option4">
-                                <span class="option-text">Варіант 4</span>
-                                <span class="accessibility-indicator" aria-label="Нейтрально"></span>
-                            </label>
-                        </div>
-                    </div>
-                </fieldset>
-                <button type="submit" class="submit-btn">Відповісти</button>
-            </form>
+            <p id="questions-count">Кількість питань: 0</p>
+
+            <ul id="questions-list">
+                <li class="static-item">Статичне питання для прикладу</li>
+            </ul>
         </section>
 
         <!-- Розділ історії спроб -->
