@@ -1,35 +1,15 @@
-console.log('script.js підключено');
+// Обраний фреймворк: React — обрано через зручну декларативну модель стану (useState) та передачу подій через props без ручного маніпулювання DOM.
+
+const { useState, useEffect } = React;
 
 const API_URL = 'https://opentdb.com/api.php?amount=10&type=multiple';
 
-let quizData = [];
-let currentIndex = 0;
-let score = 0;
-
-// Вибір елементів DOM
-const form = document.querySelector('#quiz-form');
-const questionText = document.querySelector('#question-text');
-const optionsContainer = document.querySelector('#options-container');
-const submitBtn = document.querySelector('#submit-btn');
-const nextBtn = document.querySelector('#next-btn');
-const refreshBtn = document.querySelector('#refresh-btn');
-const loadingStatus = document.querySelector('#loading-status');
-const errorMessage = document.querySelector('#error-message');
-const resultFeedback = document.querySelector('#result-feedback');
-const currentNumEl = document.querySelector('#current-question-num');
-const totalNumEl = document.querySelector('#total-questions-num');
-const progressBar = document.querySelector('#quiz-progress');
-const listContainer = document.querySelector('#questions-list');
-const questionsCountEl = document.querySelector('#questions-count');
-
-// Розкодовує HTML-сутності (наприклад, &quot;, &#039;, &amp;) у звичайний текст
 function decodeHtmlEntities(text) {
     const textarea = document.createElement('textarea');
     textarea.innerHTML = text;
     return textarea.value;
 }
 
-// Перемішує масив варіантів відповіді та повертає варіанти й індекс правильної відповіді
 function buildShuffledOptions(correctAnswer, incorrectAnswers) {
     const decodedCorrect = decodeHtmlEntities(correctAnswer);
     const allOptions = [
@@ -48,167 +28,187 @@ function buildShuffledOptions(correctAnswer, incorrectAnswers) {
     };
 }
 
-// Рендерить список питань у #questions-list та оновлює лічильник #questions-count
-function renderQuestionsList(questions) {
-    if (!listContainer) return;
+/*
+ * Ручний DOM-рендер (querySelector / createElement / innerHTML) замінено
+ * реактивними компонентами React та рендером через .map().
+ */
 
-    listContainer.innerHTML = '';
-
-    for (const item of questions) {
-        const li = document.createElement('li');
-        li.textContent = item.question;
-        li.setAttribute('data-answer', item.options[item.correctIndex]);
-        listContainer.append(li);
-    }
-
-    if (questionsCountEl) {
-        questionsCountEl.textContent = `Кількість питань: ${questions.length}`;
-    }
+// Компонент QuizQuestion приймає question, options, correctIndex через props
+// і при кліку по варіанту відповіді передає selectedIndex у батьківський компонент через answer(selectedIndex).
+function QuizQuestion({ question, options, correctIndex, answer }) {
+    return (
+        <div className="question-card">
+            <h3>{question}</h3>
+            <div className="options-container">
+                {options.map((optionText, index) => (
+                    <button
+                        key={`${question}-${index}`}
+                        type="button"
+                        className="option-item"
+                        onClick={() => answer(index)}
+                    >
+                        {optionText}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
 }
 
-// Рендерить поточне питання у форму
-function loadQuestion(index) {
-    if (!quizData.length) return;
+// Батьківський компонент застосунку з реактивним станом (useState)
+function App() {
+    // Дані в реактивному стані useState
+    const [questions, setQuestions] = useState([]);
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [score, setScore] = useState(0);
+    const [feedback, setFeedback] = useState('');
+    const [isAnswered, setIsAnswered] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
-    const currentQ = quizData[index];
-    questionText.textContent = currentQ.question;
-    currentNumEl.textContent = index + 1;
-    progressBar.max = quizData.length;
-    progressBar.value = index + 1;
-    totalNumEl.textContent = quizData.length;
+    async function loadData() {
+        setLoading(true);
+        setError('');
+        setFeedback('');
+        setIsAnswered(false);
+        setCurrentIndex(0);
+        setScore(0);
 
-    optionsContainer.innerHTML = '';
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
 
-    currentQ.options.forEach((optionText, idx) => {
-        const wrapper = document.createElement('div');
-        wrapper.classList.add('option-item');
+            const data = await response.json();
+            const formatted = (data.results || []).map((item, idx) => {
+                const shuffled = buildShuffledOptions(item.correct_answer, item.incorrect_answers);
+                return {
+                    id: idx + 1,
+                    question: decodeHtmlEntities(item.question),
+                    options: shuffled.options,
+                    correctIndex: shuffled.correctIndex
+                };
+            });
 
-        const input = document.createElement('input');
-        input.type = 'radio';
-        input.name = 'answer';
-        input.id = `option-${idx}`;
-        input.value = idx;
-        input.required = true;
-
-        const label = document.createElement('label');
-        label.htmlFor = `option-${idx}`;
-        label.textContent = optionText;
-
-        wrapper.append(input, label);
-        optionsContainer.append(wrapper);
-    });
-
-    resultFeedback.textContent = '';
-    submitBtn.style.display = 'inline-block';
-    nextBtn.style.display = 'none';
-}
-
-// Асинхронно завантажує питання з Open Trivia Database API (https://opentdb.com/api.php?amount=10&type=multiple)
-async function loadData() {
-    // Увімкнути ознаку завантаження перед запитом
-    if (loadingStatus) loadingStatus.style.display = 'block';
-    if (errorMessage) {
-        errorMessage.style.display = 'none';
-        errorMessage.textContent = '';
+            setQuestions(formatted);
+        } catch (err) {
+            console.error('Помилка завантаження питань:', err);
+            setError('Не вдалося завантажити питання. Перевірте з’єднання з інтернетом і натисніть «Оновити».');
+        } finally {
+            setLoading(false);
+        }
     }
-    if (submitBtn) submitBtn.disabled = true;
-    if (refreshBtn) refreshBtn.disabled = true;
 
-    try {
-        // Виконати fetch і дочекатися відповіді
-        const response = await fetch(API_URL);
-
-        // Перевірити HTTP-статус
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        // Розібрати JSON
-        const data = await response.json();
-        console.log('Отримані дані з API:', data);
-
-        if (!Array.isArray(data.results) || data.results.length === 0) {
-            throw new Error('API повернуло порожній список питань');
-        }
-
-        // Адаптувати поля API до структури об'єкта квізу та розкодувати HTML-сутності
-        quizData = data.results.map((item) => {
-            const shuffled = buildShuffledOptions(item.correct_answer, item.incorrect_answers);
-            return {
-                question: decodeHtmlEntities(item.question),
-                options: shuffled.options,
-                correctIndex: shuffled.correctIndex
-            };
-        });
-
-        currentIndex = 0;
-        score = 0;
-
-        renderQuestionsList(quizData);
-        loadQuestion(currentIndex);
-    } catch (error) {
-        // Зрозуміле повідомлення користувачу та деталі в console.error
-        console.error('Помилка під час завантаження питань з Open Trivia Database:', error);
-        if (errorMessage) {
-            errorMessage.textContent = 'Не вдалося завантажити питання. Перевірте з’єднання з інтернетом і спробуйте ще раз.';
-            errorMessage.style.display = 'block';
-        }
-    } finally {
-        // Вимкнути індикатори завантаження незалежно від результату
-        if (loadingStatus) loadingStatus.style.display = 'none';
-        if (submitBtn) submitBtn.disabled = false;
-        if (refreshBtn) refreshBtn.disabled = false;
-    }
-}
-
-// Повторний виклик loadData() по кнопці «Оновити» без перезавантаження сторінки
-if (refreshBtn) {
-    refreshBtn.addEventListener('click', () => {
+    useEffect(() => {
         loadData();
-    });
+    }, []);
+
+    // Обробник відповіді у батьківському компоненті — перевіряє правильність і оновлює лічильник балів
+    function handleAnswer(selectedIndex) {
+        if (isAnswered || !questions[currentIndex]) return;
+
+        const currentQ = questions[currentIndex];
+        setIsAnswered(true);
+
+        if (selectedIndex === currentQ.correctIndex) {
+            setScore((prevScore) => prevScore + 1);
+            setFeedback('Правильно!');
+        } else {
+            setFeedback(`Неправильно! Правильна відповідь: ${currentQ.options[currentQ.correctIndex]}`);
+        }
+    }
+
+    function handleNextQuestion() {
+        setCurrentIndex((prevIndex) => prevIndex + 1);
+        setFeedback('');
+        setIsAnswered(false);
+    }
+
+    const currentQuestion = questions[currentIndex];
+    const isFinished = questions.length > 0 && currentIndex >= questions.length;
+
+    return (
+        <>
+            <section id="progress-section">
+                <h2>Прогрес</h2>
+                <div className="progress-container">
+                    <span className="progress-label">
+                        Питання{' '}
+                        <span className="large-question-num">
+                            {questions.length > 0 ? Math.min(currentIndex + 1, questions.length) : 0}
+                        </span>{' '}
+                        з <span>{questions.length}</span>
+                    </span>
+                </div>
+                <progress
+                    value={questions.length > 0 ? Math.min(currentIndex + 1, questions.length) : 0}
+                    max={questions.length || 1}
+                />
+                <p>Бали: <strong>{score}</strong></p>
+            </section>
+
+            <section id="question-section">
+                <h2>Поточне питання</h2>
+                <button type="button" className="submit-btn" onClick={loadData} disabled={loading}>
+                    Оновити
+                </button>
+
+                {loading && <p>Завантаження питань...</p>}
+                {error && <p style={{ color: '#c5221f', fontWeight: 'bold' }}>{error}</p>}
+
+                {!loading && !error && currentQuestion && !isFinished && (
+                    <>
+                        {/* Рендер поточного компонента QuizQuestion з передачею props та callback */}
+                        <QuizQuestion
+                            key={currentQuestion.id}
+                            question={currentQuestion.question}
+                            options={currentQuestion.options}
+                            correctIndex={currentQuestion.correctIndex}
+                            answer={handleAnswer}
+                        />
+
+                        {feedback && <p style={{ fontWeight: 'bold', marginTop: '1rem' }}>{feedback}</p>}
+
+                        {isAnswered && (
+                            <button type="button" className="submit-btn" onClick={handleNextQuestion}>
+                                Наступне питання
+                            </button>
+                        )}
+                    </>
+                )}
+
+                {!loading && !error && isFinished && (
+                    <div className="question-card">
+                        <h3>Квіз завершено!</h3>
+                        <p>Ваш підсумковий результат: <strong>{score} з {questions.length}</strong></p>
+                        <button type="button" className="submit-btn" onClick={loadData}>
+                            Пройти ще раз
+                        </button>
+                    </div>
+                )}
+            </section>
+
+            <section id="history-section">
+                <h2>Історія спроб</h2>
+                {/* Рендер списку карток через map() з ключем key */}
+                <div className="history-cards">
+                    {[
+                        { id: 'attempt-1', date: '10.09.2026', result: '8/10' },
+                        { id: 'attempt-2', date: '11.09.2026', result: '10/10' },
+                        { id: 'attempt-3', date: '12.09.2026', result: '9/10' }
+                    ].map((attempt) => (
+                        <article key={attempt.id} className="history-card">
+                            <h3>Спроба від {attempt.date}</h3>
+                            <p>Результат: {attempt.result}</p>
+                        </article>
+                    ))}
+                </div>
+            </section>
+        </>
+    );
 }
 
-// Обробник сабміту форми
-form.addEventListener('submit', (event) => {
-    event.preventDefault();
-
-    const selectedRadio = form.querySelector('input[name="answer"]:checked');
-    if (!selectedRadio) {
-        return;
-    }
-
-    const chosenIndex = Number(selectedRadio.value);
-    const currentQ = quizData[currentIndex];
-
-    if (chosenIndex === currentQ.correctIndex) {
-        resultFeedback.textContent = 'Правильно!';
-        resultFeedback.style.color = '#137333';
-        score++;
-    } else {
-        resultFeedback.textContent = `Неправильно! Правильна відповідь: ${currentQ.options[currentQ.correctIndex]}`;
-        resultFeedback.style.color = '#c5221f';
-    }
-
-    submitBtn.style.display = 'none';
-    nextBtn.style.display = 'inline-block';
-});
-
-// Перемикання на наступне питання та скидання стану форми
-nextBtn.addEventListener('click', () => {
-    currentIndex++;
-
-    if (currentIndex < quizData.length) {
-        loadQuestion(currentIndex);
-        form.reset();
-    } else {
-        questionText.textContent = 'Квіз завершено!';
-        optionsContainer.innerHTML = `<p>Ваш результат: <strong>${score} з ${quizData.length}</strong></p>`;
-        form.querySelector('fieldset').style.border = 'none';
-        submitBtn.style.display = 'none';
-        nextBtn.style.display = 'none';
-        resultFeedback.textContent = '';
-    }
-});
-
-// Перший запуск завантаження даних при відкритті сторінки
-loadData();
+const rootElement = document.getElementById('root');
+const root = ReactDOM.createRoot(rootElement);
+root.render(<App />);

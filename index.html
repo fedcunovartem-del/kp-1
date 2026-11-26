@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Вікторина</title>
     <link rel="stylesheet" href="style.css" />
-    <script src="script.js" defer></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="text/babel" src="app.js" defer></script>
 </head>
 <body>
 
@@ -19,73 +22,7 @@
         </nav>
     </header>
 
-    <main>
-        <!-- Блок прогресу -->
-        <section id="progress-section">
-            <h2>Прогрес</h2>
-            <div class="progress-container">
-                <span class="progress-label">Питання <span class="large-question-num" id="current-question-num">1</span> з <span id="total-questions-num">10</span></span>
-            </div>
-            <progress id="quiz-progress" value="1" max="10"></progress>
-        </section>
-
-        <!-- Блок поточного питання й форми -->
-        <section id="question-section" class="question-card">
-            <h2>Поточне питання</h2>
-
-            <div class="api-controls" style="margin-bottom: 1rem;">
-                <button type="button" class="submit-btn" id="refresh-btn">Оновити</button>
-                <p id="loading-status" style="display: none; margin: 0.5rem 0; font-weight: bold;">Завантаження питань...</p>
-                <p id="error-message" style="display: none; margin: 0.5rem 0; color: #c5221f; font-weight: bold;"></p>
-            </div>
-
-            <form id="quiz-form">
-                <fieldset>
-                    <legend id="question-text">Завантаження питання...</legend>
-
-                    <div class="options-container" id="options-container">
-                        <!-- Динамічно згенеровані radio-кнопки з'являтимуться тут -->
-                    </div>
-                </fieldset>
-
-                <div class="form-actions">
-                    <button type="submit" class="submit-btn" id="submit-btn">Відповісти</button>
-                    <button type="button" class="submit-btn" id="next-btn" style="display: none;">Наступне питання</button>
-                </div>
-            </form>
-
-            <p id="result-feedback" style="margin-top: 1rem; font-weight: bold;"></p>
-        </section>
-
-        <!-- Список питань для відображення завантажених записів -->
-        <section id="questions-list-section" class="question-card">
-            <h2>Список питань</h2>
-            <p id="questions-count">Кількість питань: 0</p>
-            <ul id="questions-list"></ul>
-        </section>
-
-        <!-- Розділ історії спроб -->
-        <section id="history-section">
-            <h2>Історія спроб</h2>
-
-            <div class="history-cards">
-                <article class="history-card">
-                    <h3>Спроба від 10.09.2026</h3>
-                    <p>Результат: 8/10</p>
-                </article>
-
-                <article class="history-card">
-                    <h3>Спроба від 11.09.2026</h3>
-                    <p>Результат: 10/10</p>
-                </article>
-
-                <article class="history-card">
-                    <h3>Спроба від 12.09.2026</h3>
-                    <p>Результат: 9/10</p>
-                </article>
-            </div>
-        </section>
-    </main>
+    <main id="root"></main>
 
     <footer>
         <p>&copy; 2026 quiz-app. Навчальний проєкт.</p>
