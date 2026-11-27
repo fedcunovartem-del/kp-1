@@ -1,8 +1,15 @@
-// Обраний фреймворк: React — обрано через зручну декларативну модель стану (useState) та передачу подій через props без ручного маніпулювання DOM.
+// Обраний фреймворк: React — декларативне керування станом через useState/useEffect та компонентна архітектура без ручного маніпулювання DOM.
 
 const { useState, useEffect } = React;
 
 const API_URL = 'https://opentdb.com/api.php?amount=10&type=multiple';
+
+// Ключі для localStorage та налаштування схеми IndexedDB 
+const STORAGE_KEY = 'quiz_results_backup';
+const MIGRATION_FLAG_KEY = 'quiz_results_migrated_to_idb';
+const DB_NAME = 'QuizResultsDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'results';
 
 function decodeHtmlEntities(text) {
     const textarea = document.createElement('textarea');
@@ -28,13 +35,130 @@ function buildShuffledOptions(correctAnswer, incorrectAnswers) {
     };
 }
 
-/*
- * Ручний DOM-рендер (querySelector / createElement / innerHTML) замінено
- * реактивними компонентами React та рендером через .map().
- */
+// Зберігає масив результатів у localStorage у форматі JSON
+function saveToLocalStorage(items) {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    } catch (error) {
+        console.error('Помилка збереження даних у localStorage:', error);
+    }
+}
 
-// Компонент QuizQuestion приймає question, options, correctIndex через props
-// і при кліку по варіанту відповіді передає selectedIndex у батьківський компонент через answer(selectedIndex).
+// Зчитує та розбирає збережені результати з localStorage із захистом через try/catch
+function loadFromLocalStorage() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        console.error('Помилка розбору даних із localStorage:', error);
+        return [];
+    }
+}
+
+// Відкриває базу даних IndexedDB та створює object store "results" (keyPath: "id", autoIncrement: true)
+function openDB() {
+    return new Promise((resolve, reject) => {
+        if (!('indexedDB' in window)) {
+            reject(new Error('IndexedDB не підтримується у цьому браузері або режимі перегляду.'));
+            return;
+        }
+
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, {
+                    keyPath: 'id',
+                    autoIncrement: true
+                });
+            }
+        };
+
+        request.onsuccess = (event) => {
+            resolve(event.target.result);
+        };
+
+        request.onerror = (event) => {
+            reject(event.target.error || new Error('Не вдалося відкрити базу даних IndexedDB.'));
+        };
+    });
+}
+
+// Додає новий запис результату до object store "results" через транзакцію readwrite
+async function addItem(item) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+
+        // Якщо id не вказано явно, видаляємо поле, щоб спрацював autoIncrement: true
+        const recordToSave = { ...item };
+        if (recordToSave.id === undefined || recordToSave.id === null) {
+            delete recordToSave.id;
+        }
+
+        const request = store.add(recordToSave);
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error('Помилка додавання запису в IndexedDB.'));
+    });
+}
+
+// Оновлює наявний запис результату в object store "results" через метод put
+async function updateItem(item) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.put(item);
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error('Помилка оновлення запису в IndexedDB.'));
+    });
+}
+
+// Зчитує всі збережені результати зі сховища "results" через транзакцію readonly
+async function getAllItems() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.getAll();
+
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error || new Error('Помилка зчитування даних із IndexedDB.'));
+    });
+}
+
+// Видаляє запис результату за його id зі сховища "results"
+async function deleteItem(id) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.delete(id);
+
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error || new Error('Помилка видалення запису з IndexedDB.'));
+    });
+}
+
+// Сортує результати на клієнті: від найкращого відсотка/балів до нижчих
+function sortResultsByBest(items) {
+    return [...items].sort((a, b) => {
+        const ratioA = a.total > 0 ? a.score / a.total : 0;
+        const ratioB = b.total > 0 ? b.score / b.total : 0;
+        if (ratioB !== ratioA) {
+            return ratioB - ratioA;
+        }
+        return b.score - a.score;
+    });
+}
+
+
 function QuizQuestion({ question, options, correctIndex, answer }) {
     return (
         <div className="question-card">
@@ -55,9 +179,7 @@ function QuizQuestion({ question, options, correctIndex, answer }) {
     );
 }
 
-// Батьківський компонент застосунку з реактивним станом (useState)
 function App() {
-    // Дані в реактивному стані useState
     const [questions, setQuestions] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [score, setScore] = useState(0);
@@ -65,6 +187,44 @@ function App() {
     const [isAnswered, setIsAnswered] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    // Стан для збережених результатів із IndexedDB
+    const [savedResults, setSavedResults] = useState([]);
+    const [storageError, setStorageError] = useState('');
+
+    // Завантажує результати з IndexedDB, за потреби виконує одноразову міграцію з localStorage
+    async function syncResultsFromStorage() {
+        try {
+            setStorageError('');
+            let idbItems = await getAllItems();
+
+            // Одноразова міграція з localStorage, якщо object store порожній
+            const alreadyMigrated = localStorage.getItem(MIGRATION_FLAG_KEY) === 'true';
+            if (idbItems.length === 0 && !alreadyMigrated) {
+                const legacyItems = loadFromLocalStorage();
+                if (legacyItems.length > 0) {
+                    for (const legacy of legacyItems) {
+                        await addItem({
+                            date: legacy.date,
+                            score: legacy.score,
+                            total: legacy.total
+                        });
+                    }
+                    idbItems = await getAllItems();
+                }
+                localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
+            }
+
+            const sorted = sortResultsByBest(idbItems);
+            setSavedResults(sorted);
+            saveToLocalStorage(sorted);
+        } catch (err) {
+            console.error('Помилка роботи з IndexedDB:', err);
+            setStorageError('Локальне сховище IndexedDB недоступне (можливо, увімкнено приватний режим браузера). Використовується резервне збереження в localStorage.');
+            const fallbackItems = sortResultsByBest(loadFromLocalStorage());
+            setSavedResults(fallbackItems);
+        }
+    }
 
     async function loadData() {
         setLoading(true);
@@ -81,7 +241,11 @@ function App() {
             }
 
             const data = await response.json();
-            const formatted = (data.results || []).map((item, idx) => {
+            if (!Array.isArray(data.results) || data.results.length === 0) {
+                throw new Error('API повернуло порожній список питань');
+            }
+
+            const formatted = data.results.map((item, idx) => {
                 const shuffled = buildShuffledOptions(item.correct_answer, item.incorrect_answers);
                 return {
                     id: idx + 1,
@@ -93,7 +257,7 @@ function App() {
 
             setQuestions(formatted);
         } catch (err) {
-            console.error('Помилка завантаження питань:', err);
+            console.error('Помилка під час завантаження питань:', err);
             setError('Не вдалося завантажити питання. Перевірте з’єднання з інтернетом і натисніть «Оновити».');
         } finally {
             setLoading(false);
@@ -102,9 +266,9 @@ function App() {
 
     useEffect(() => {
         loadData();
+        syncResultsFromStorage();
     }, []);
 
-    // Обробник відповіді у батьківському компоненті — перевіряє правильність і оновлює лічильник балів
     function handleAnswer(selectedIndex) {
         if (isAnswered || !questions[currentIndex]) return;
 
@@ -119,14 +283,58 @@ function App() {
         }
     }
 
-    function handleNextQuestion() {
-        setCurrentIndex((prevIndex) => prevIndex + 1);
+    // При завершенні квізу зберігає результат у IndexedDB та localStorage
+    async function handleNextQuestion() {
+        const nextIndex = currentIndex + 1;
+        setCurrentIndex(nextIndex);
         setFeedback('');
         setIsAnswered(false);
+
+        if (nextIndex >= questions.length && questions.length > 0) {
+            const formattedDate = new Date().toLocaleDateString('uk-UA');
+            const newRecord = {
+                date: formattedDate,
+                score: score,
+                total: questions.length
+            };
+
+            try {
+                await addItem(newRecord);
+                const allFromDb = await getAllItems();
+                const sorted = sortResultsByBest(allFromDb);
+                setSavedResults(sorted);
+                saveToLocalStorage(sorted);
+            } catch (err) {
+                console.error('Не вдалося зберегти результат у IndexedDB:', err);
+                const fallbackList = sortResultsByBest([
+                    ...savedResults,
+                    { id: Date.now(), ...newRecord }
+                ]);
+                setSavedResults(fallbackList);
+                saveToLocalStorage(fallbackList);
+            }
+        }
+    }
+
+    // Видалення результату зі сховища з оновленням списку та localStorage
+    async function handleDeleteResult(id) {
+        try {
+            await deleteItem(id);
+            const allFromDb = await getAllItems();
+            const sorted = sortResultsByBest(allFromDb);
+            setSavedResults(sorted);
+            saveToLocalStorage(sorted);
+        } catch (err) {
+            console.error('Не вдалося видалити запис із IndexedDB:', err);
+            const updatedFallback = savedResults.filter((item) => item.id !== id);
+            setSavedResults(updatedFallback);
+            saveToLocalStorage(updatedFallback);
+        }
     }
 
     const currentQuestion = questions[currentIndex];
     const isFinished = questions.length > 0 && currentIndex >= questions.length;
+    const displayQuestionNumber = questions.length > 0 ? Math.min(currentIndex + 1, questions.length) : 0;
 
     return (
         <>
@@ -135,14 +343,12 @@ function App() {
                 <div className="progress-container">
                     <span className="progress-label">
                         Питання{' '}
-                        <span className="large-question-num">
-                            {questions.length > 0 ? Math.min(currentIndex + 1, questions.length) : 0}
-                        </span>{' '}
+                        <span className="large-question-num">{displayQuestionNumber}</span>{' '}
                         з <span>{questions.length}</span>
                     </span>
                 </div>
                 <progress
-                    value={questions.length > 0 ? Math.min(currentIndex + 1, questions.length) : 0}
+                    value={displayQuestionNumber}
                     max={questions.length || 1}
                 />
                 <p>Бали: <strong>{score}</strong></p>
@@ -159,7 +365,6 @@ function App() {
 
                 {!loading && !error && currentQuestion && !isFinished && (
                     <>
-                        {/* Рендер поточного компонента QuizQuestion з передачею props та callback */}
                         <QuizQuestion
                             key={currentQuestion.id}
                             question={currentQuestion.question}
@@ -190,20 +395,32 @@ function App() {
             </section>
 
             <section id="history-section">
-                <h2>Історія спроб</h2>
-                {/* Рендер списку карток через map() з ключем key */}
-                <div className="history-cards">
-                    {[
-                        { id: 'attempt-1', date: '10.09.2026', result: '8/10' },
-                        { id: 'attempt-2', date: '11.09.2026', result: '10/10' },
-                        { id: 'attempt-3', date: '12.09.2026', result: '9/10' }
-                    ].map((attempt) => (
-                        <article key={attempt.id} className="history-card">
-                            <h3>Спроба від {attempt.date}</h3>
-                            <p>Результат: {attempt.result}</p>
-                        </article>
-                    ))}
-                </div>
+                <h2>Найкращі результати спроб</h2>
+
+                {storageError && (
+                    <p style={{ color: '#c5221f', fontWeight: 'bold' }}>{storageError}</p>
+                )}
+
+                {savedResults.length === 0 ? (
+                    <p>Збережених результатів поки немає. Пройдіть вікторину, щоб зберегти свій перший результат!</p>
+                ) : (
+                    <div className="history-cards">
+                        {savedResults.map((attempt) => (
+                            <article key={attempt.id} className="history-card">
+                                <h3>Спроба #{attempt.id} від {attempt.date}</h3>
+                                <p>Результат: <strong>{attempt.score}/{attempt.total}</strong></p>
+                                <button
+                                    type="button"
+                                    className="submit-btn"
+                                    style={{ marginTop: '0.75rem', padding: '8px 14px', fontSize: '0.875rem' }}
+                                    onClick={() => handleDeleteResult(attempt.id)}
+                                >
+                                    Видалити
+                                </button>
+                            </article>
+                        ))}
+                    </div>
+                )}
             </section>
         </>
     );
