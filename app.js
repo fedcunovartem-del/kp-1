@@ -1,10 +1,11 @@
 // Обраний фреймворк: React — декларативне керування станом через useState/useEffect та компонентна архітектура без ручного маніпулювання DOM.
+// Технологія анімації (Крок 1, Варіант 8): Canvas 2D API — дуга зворотного відліку, що зменшується щокадру через ctx.arc() у циклі requestAnimationFrame.
 
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 
 const API_URL = 'https://opentdb.com/api.php?amount=10&type=multiple';
+const DEFAULT_QUESTION_TIME_SEC = 20;
 
-// Ключі для localStorage та налаштування схеми IndexedDB 
 const STORAGE_KEY = 'quiz_results_backup';
 const MIGRATION_FLAG_KEY = 'quiz_results_migrated_to_idb';
 const DB_NAME = 'QuizResultsDB';
@@ -35,7 +36,10 @@ function buildShuffledOptions(correctAnswer, incorrectAnswers) {
     };
 }
 
-// Зберігає масив результатів у localStorage у форматі JSON
+// ============================================================================
+// Робота з localStorage
+// ============================================================================
+
 function saveToLocalStorage(items) {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
@@ -44,7 +48,6 @@ function saveToLocalStorage(items) {
     }
 }
 
-// Зчитує та розбирає збережені результати з localStorage із захистом через try/catch
 function loadFromLocalStorage() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
@@ -57,7 +60,10 @@ function loadFromLocalStorage() {
     }
 }
 
-// Відкриває базу даних IndexedDB та створює object store "results" (keyPath: "id", autoIncrement: true)
+// ============================================================================
+// Робота з IndexedDB: відкриття бази та CRUD-операції
+// ============================================================================
+
 function openDB() {
     return new Promise((resolve, reject) => {
         if (!('indexedDB' in window)) {
@@ -87,14 +93,12 @@ function openDB() {
     });
 }
 
-// Додає новий запис результату до object store "results" через транзакцію readwrite
 async function addItem(item) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
         const transaction = db.transaction(STORE_NAME, 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
 
-        // Якщо id не вказано явно, видаляємо поле, щоб спрацював autoIncrement: true
         const recordToSave = { ...item };
         if (recordToSave.id === undefined || recordToSave.id === null) {
             delete recordToSave.id;
@@ -107,7 +111,6 @@ async function addItem(item) {
     });
 }
 
-// Оновлює наявний запис результату в object store "results" через метод put
 async function updateItem(item) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -120,7 +123,6 @@ async function updateItem(item) {
     });
 }
 
-// Зчитує всі збережені результати зі сховища "results" через транзакцію readonly
 async function getAllItems() {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -133,7 +135,6 @@ async function getAllItems() {
     });
 }
 
-// Видаляє запис результату за його id зі сховища "results"
 async function deleteItem(id) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -146,7 +147,6 @@ async function deleteItem(id) {
     });
 }
 
-// Сортує результати на клієнті: від найкращого відсотка/балів до нижчих
 function sortResultsByBest(items) {
     return [...items].sort((a, b) => {
         const ratioA = a.total > 0 ? a.score / a.total : 0;
@@ -158,6 +158,120 @@ function sortResultsByBest(items) {
     });
 }
 
+
+// Малює анімовану дугу зворотного відліку на Canvas через ctx.arc() у циклі requestAnimationFrame
+function CountdownArcCanvas({ durationSeconds, isPaused, resetKey, onTimeout }) {
+    const canvasRef = useRef(null);
+    const frameIdRef = useRef(null);
+    const remainingMsRef = useRef(durationSeconds * 1000);
+    const lastTimestampRef = useRef(null);
+    const timedOutRef = useRef(false);
+    const onTimeoutRef = useRef(onTimeout);
+
+    useEffect(() => {
+        onTimeoutRef.current = onTimeout;
+    }, [onTimeout]);
+
+    // Скидає тривалість таймера під поточне питання з даних застосунку
+    useEffect(() => {
+        const safeDuration = Number.isFinite(durationSeconds) && durationSeconds > 0
+            ? durationSeconds
+            : DEFAULT_QUESTION_TIME_SEC;
+        remainingMsRef.current = safeDuration * 1000;
+        lastTimestampRef.current = null;
+        timedOutRef.current = false;
+    }, [durationSeconds, resetKey]);
+
+    // Цикл анімації через requestAnimationFrame з clearRect, ctx.arc та cancelAnimationFrame
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        // Отримання 2D-контексту з фіксованими розмірами canvas (140x140)
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const totalMs = (Number.isFinite(durationSeconds) && durationSeconds > 0
+            ? durationSeconds
+            : DEFAULT_QUESTION_TIME_SEC) * 1000;
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = 52;
+        const startAngle = -Math.PI / 2;
+
+        function drawFrame(now) {
+            if (lastTimestampRef.current !== null && !isPaused) {
+                const deltaMs = Math.max(0, now - lastTimestampRef.current);
+                remainingMsRef.current = Math.max(0, remainingMsRef.current - deltaMs);
+            }
+            lastTimestampRef.current = now;
+
+            const ratio = totalMs > 0 ? remainingMsRef.current / totalMs : 0;
+            const secondsLeft = Math.ceil(remainingMsRef.current / 1000);
+
+            // Очищення попереднього кадру через clearRect
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Фонове кільце таймера
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 10;
+            ctx.stroke();
+
+            // Анімована дуга зворотного відліку, що зменшується щокадру через ctx.arc()
+            if (ratio > 0) {
+                const endAngle = startAngle + Math.PI * 2 * ratio;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, startAngle, endAngle, false);
+                ctx.strokeStyle = ratio > 0.3 ? '#6b21a8' : '#c5221f';
+                ctx.lineWidth = 10;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+            }
+
+            // Числовий індикатор секунд у центрі дуги
+            ctx.fillStyle = '#1f2937';
+            ctx.font = 'bold 20px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`${secondsLeft}с`, centerX, centerY);
+
+            if (remainingMsRef.current <= 0 && !isPaused && !timedOutRef.current) {
+                timedOutRef.current = true;
+                if (typeof onTimeoutRef.current === 'function') {
+                    onTimeoutRef.current();
+                }
+                return;
+            }
+
+            frameIdRef.current = requestAnimationFrame(drawFrame);
+        }
+
+        frameIdRef.current = requestAnimationFrame(drawFrame);
+
+        // Зупинка анімації через cancelAnimationFrame при виході з екрана або оновленні залежностей
+        return () => {
+            if (frameIdRef.current !== null) {
+                cancelAnimationFrame(frameIdRef.current);
+                frameIdRef.current = null;
+            }
+        };
+    }, [durationSeconds, isPaused, resetKey]);
+
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+            {/* <canvas> з фіксованими width та height */}
+            <canvas ref={canvasRef} width={140} height={140} aria-label="Таймер зворотного відліку на відповідь" />
+            <span>Час на відповідь: <strong>{durationSeconds} с</strong></span>
+        </div>
+    );
+}
+
+// ============================================================================
+// React-компоненти
+// ============================================================================
 
 function QuizQuestion({ question, options, correctIndex, answer }) {
     return (
@@ -188,17 +302,14 @@ function App() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    // Стан для збережених результатів із IndexedDB
     const [savedResults, setSavedResults] = useState([]);
     const [storageError, setStorageError] = useState('');
 
-    // Завантажує результати з IndexedDB, за потреби виконує одноразову міграцію з localStorage
     async function syncResultsFromStorage() {
         try {
             setStorageError('');
             let idbItems = await getAllItems();
 
-            // Одноразова міграція з localStorage, якщо object store порожній
             const alreadyMigrated = localStorage.getItem(MIGRATION_FLAG_KEY) === 'true';
             if (idbItems.length === 0 && !alreadyMigrated) {
                 const legacyItems = loadFromLocalStorage();
@@ -245,13 +356,16 @@ function App() {
                 throw new Error('API повернуло порожній список питань');
             }
 
+            // Формуємо об'єкт питання з динамічною тривалістю відповіді з даних застосунку
             const formatted = data.results.map((item, idx) => {
                 const shuffled = buildShuffledOptions(item.correct_answer, item.incorrect_answers);
+                const timeLimit = item.difficulty === 'hard' ? 25 : DEFAULT_QUESTION_TIME_SEC;
                 return {
                     id: idx + 1,
                     question: decodeHtmlEntities(item.question),
                     options: shuffled.options,
-                    correctIndex: shuffled.correctIndex
+                    correctIndex: shuffled.correctIndex,
+                    timeLimit
                 };
             });
 
@@ -283,7 +397,15 @@ function App() {
         }
     }
 
-    // При завершенні квізу зберігає результат у IndexedDB та localStorage
+    // Обробник закінчення часу таймера на поточне питання
+    function handleTimerTimeout() {
+        if (isAnswered || !questions[currentIndex]) return;
+
+        const currentQ = questions[currentIndex];
+        setIsAnswered(true);
+        setFeedback(`Час вичерпано! Правильна відповідь: ${currentQ.options[currentQ.correctIndex]}`);
+    }
+
     async function handleNextQuestion() {
         const nextIndex = currentIndex + 1;
         setCurrentIndex(nextIndex);
@@ -316,7 +438,6 @@ function App() {
         }
     }
 
-    // Видалення результату зі сховища з оновленням списку та localStorage
     async function handleDeleteResult(id) {
         try {
             await deleteItem(id);
@@ -365,6 +486,14 @@ function App() {
 
                 {!loading && !error && currentQuestion && !isFinished && (
                     <>
+                        {/* Анімований Canvas-таймер, прив'язаний до поточного питання та стану відповіді */}
+                        <CountdownArcCanvas
+                            durationSeconds={currentQuestion.timeLimit}
+                            isPaused={isAnswered}
+                            resetKey={`${currentQuestion.id}-${currentIndex}`}
+                            onTimeout={handleTimerTimeout}
+                        />
+
                         <QuizQuestion
                             key={currentQuestion.id}
                             question={currentQuestion.question}
